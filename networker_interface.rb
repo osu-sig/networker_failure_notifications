@@ -6,7 +6,7 @@ require 'uri'
 class NetworkerInterface
 
   def initialize
-    @config = YAML::load_file('config.yml')['networker']
+    @config = YAML::load_file('config.yml')
     @attributes = ""
     @restrictions = ""
     @server = @config['server']
