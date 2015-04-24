@@ -55,7 +55,7 @@ class Mailman < NetworkerInterface
   def deliver(email_address, email_body)
     Mail.deliver do 
       from 'sig.do_not_reply@onid.oregonstate.edu'
-      to email_address
+      to [email_address, 'gaylon.degeer@oregonstate.edu']
       subject 'Backup failure notification'
       body email_body
     end
