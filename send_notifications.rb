@@ -1,4 +1,4 @@
-require_relative 'networker_interface'
+require_relative 'mailman'
 
 if Mailman.new.send_notifications
   exit(0)
