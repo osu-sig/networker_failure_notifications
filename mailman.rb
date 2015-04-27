@@ -21,6 +21,7 @@ class Mailman < NetworkerInterface
     end
     
     notifications.each do |email, hosts|
+      puts "Notifying #{email_address} of #{hosts.length} failures."
       body = "Backups failed on the following hosts:\n" + hosts.join("\n")
       body += "\n\n\nPlease consider investigating."
       deliver(email, body)
@@ -52,7 +53,7 @@ class Mailman < NetworkerInterface
   end
   
   
-  def deliver(email_address, email_body)
+  def deliver(email_address, email_body)    
     Mail.deliver do 
       from 'sig.do_not_reply@onid.oregonstate.edu'
       to [email_address, 'gaylon.degeer@oregonstate.edu']
