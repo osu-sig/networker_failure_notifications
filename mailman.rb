@@ -8,7 +8,7 @@ class Mailman < NetworkerInterface
     @host_email_mappings = get_host_email_mappings
     @hours_back_to_check = 8
     Mail.defaults do
-      delivery_method :smtp, address: "mail.oregonstate.edu", port: 587
+      delivery_method :smtp, address: "smtp.oregonstate.edu", port: 587
     end
   end
   
@@ -19,9 +19,9 @@ class Mailman < NetworkerInterface
       email = @host_email_mappings[host]
       notifications[email] += [host].flatten
     end
-    
+
     notifications.each do |email, hosts|
-      puts "Notifying #{email_address} of #{hosts.length} failures."
+      puts "Notifying #{email} of #{hosts.length} failures: #{hosts.join(',')}"
       body = "Backups failed on the following hosts:\n" + hosts.join("\n")
       body += "\n\n\nPlease consider investigating."
       deliver(email, body)
@@ -45,15 +45,15 @@ class Mailman < NetworkerInterface
   
   
   def get_host_email_mappings
-    mapped_hosts = Hash.new([])
+    mapped_hosts = Hash.new
     get_mappings.each do |entry|
-      mapped_hosts[entry[:host]] = [entry[:email]]
+      mapped_hosts[entry[:host]] = entry[:email]
     end
     mapped_hosts
   end
   
   
-  def deliver(email_address, email_body)    
+  def deliver(email_address, email_body)   
     Mail.deliver do 
       from 'sig.do_not_reply@onid.oregonstate.edu'
       to [email_address, 'gaylon.degeer@oregonstate.edu']
