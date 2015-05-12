@@ -6,7 +6,7 @@ class Mailman < NetworkerInterface
   def initialize
     super
     @host_email_mappings = get_host_email_mappings
-    @hours_back_to_check = 8
+    @hours_back_to_check = 24
     Mail.defaults do
       delivery_method :smtp, address: "smtp.oregonstate.edu", port: 587
     end
@@ -65,11 +65,14 @@ class Mailman < NetworkerInterface
   
   def get_failures
     time_threshold = Time.now.to_i - @hours_back_to_check * 3600 + 60
-    job_list = select(:end_time, :Reason_job_was_terminated, :failed_clients_list).
+    job_list = select(:end_time, :Reason_job_was_terminated, :failed_clients_list,
+                      :unresolved_clients_list).
                where(type: 'savegroup job', job_state: 'COMPLETED', completion_status: 'failed')
     job_list.delete_if { |job| job[:Reason_job_was_terminated] == "Aborted" }
     job_list.delete_if { |job| job[:end_time].to_i < time_threshold }
-    job_list.map { |job| job[:failed_clients_list] }.flatten
+    job_list.map! { |job| [job[:failed_clients_list], job[:unresolved_clients_list]]  }.flatten!
+    job_list.delete_if { |job| job == "" }
+    job_list
   end
   
 end
