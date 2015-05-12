@@ -6,14 +6,15 @@ class Mailman < NetworkerInterface
   def initialize
     super
     @host_email_mappings = get_host_email_mappings
-    @hours_back_to_check = 24
+    @hours_back_to_check = 8
     Mail.defaults do
       delivery_method :smtp, address: "smtp.oregonstate.edu", port: 587
     end
   end
   
   
-  def send_notifications
+  # Hosts that generically failed for some reason
+  def send_failure_notifications
     notifications = Hash.new([])
     get_failures.each do |host|
       email = @host_email_mappings[host]
@@ -23,6 +24,25 @@ class Mailman < NetworkerInterface
     notifications.each do |email, hosts|
       puts "Notifying #{email} of #{hosts.length} failures: #{hosts.join(',')}"
       body = "Backups failed on the following hosts:\n" + hosts.join("\n")
+      body += "\n\n\nPlease consider investigating."
+      deliver(email, body)
+    end
+    
+    true
+  end
+  
+  
+  # Hosts whose names could not be resolved by DNS or whatever, which caused them to fail
+  def send_unresolved_notifications
+    notifications = Hash.new([])
+    get_unresolved.each do |host|
+      email = @host_email_mappings[host]
+      notifications[email] += [host].flatten
+    end
+
+    notifications.each do |email, hosts|
+      puts "Notifying #{email} of #{hosts.length} unresolved hosts: #{hosts.join(',')}"
+      body = "Backups failed on the following hosts because their names could not be resolved:\n" + hosts.join("\n")
       body += "\n\n\nPlease consider investigating."
       deliver(email, body)
     end
@@ -65,12 +85,23 @@ class Mailman < NetworkerInterface
   
   def get_failures
     time_threshold = Time.now.to_i - @hours_back_to_check * 3600 + 60
-    job_list = select(:end_time, :Reason_job_was_terminated, :failed_clients_list,
-                      :unresolved_clients_list).
+    job_list = select(:end_time, :Reason_job_was_terminated, :failed_clients_list).
                where(type: 'savegroup job', job_state: 'COMPLETED', completion_status: 'failed')
     job_list.delete_if { |job| job[:Reason_job_was_terminated] == "Aborted" }
     job_list.delete_if { |job| job[:end_time].to_i < time_threshold }
-    job_list.map! { |job| [job[:failed_clients_list], job[:unresolved_clients_list]]  }.flatten!
+    job_list.map! { |job| job[:failed_clients_list] }.flatten!
+    job_list.delete_if { |job| job == "" }
+    job_list
+  end
+  
+  
+  def get_unresolved
+    time_threshold = Time.now.to_i - @hours_back_to_check * 3600 + 60
+    job_list = select(:end_time, :Reason_job_was_terminated, :unresolved_clients_list).
+               where(type: 'savegroup job', job_state: 'COMPLETED', completion_status: 'failed')
+    job_list.delete_if { |job| job[:Reason_job_was_terminated] == "Aborted" }
+    job_list.delete_if { |job| job[:end_time].to_i < time_threshold }
+    job_list.map! { |job| job[:unresolved_clients_list] }.flatten!
     job_list.delete_if { |job| job == "" }
     job_list
   end
