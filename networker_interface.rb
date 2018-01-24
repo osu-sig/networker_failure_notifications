@@ -10,6 +10,7 @@ class NetworkerInterface
     @attributes = ""
     @restrictions = ""
     @server = @config['server']
+    @port = @config['port']
     @password = @config['password']
     @user = @config['user']
   end
